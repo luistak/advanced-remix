@@ -187,7 +187,7 @@ interface DepositFormElement extends HTMLFormElement {
 function Deposits() {
   const data = useLoaderData() as LoaderData;
   const newDepositFetcher = useFetcher();
-  const formRef = useRef<HTMLFormElement>(null);
+  const formRef = useRef<DepositFormElement>(null);
 
   const deposits = [...data.deposits];
 
@@ -214,19 +214,28 @@ function Deposits() {
     | ActionData["errors"]
     | undefined;
 
+    console.log({ errors })
+
   useEffect(() => {
     if (!formRef.current) return;
     if (newDepositFetcher.type !== "done") return;
+    if (newDepositFetcher.type !== "done") return;
 
-    // 💿 If there's an error on the amount, focus the amount element
+    const formEl = formRef.current;
 
-    // 💿 If there's an error on the desposit date, focus the depositDate element
-
+    if (errors?.amount) {
+      // 💿 If there's an error on the amount, focus the amount element
+      formEl.elements.amount?.focus(); 
+    } else if (errors?.depositDate) {
+      // 💿 If there's an error on the desposit date, focus the depositDate element
+      formEl.elements.depositDate?.focus(); 
+      // 💯 In what situation would we want to *not* change focus and *not* reset the form at this point?
+    } else if (document.activeElement === formEl.elements.intent) {
+      formEl.reset();
+      formEl.elements.amount?.focus();
+    }
     // 💿 Focus on the amount field
-    // 💯 In what situation would we want to *not* change focus and *not* reset the form at this point?
-
-    formRef.current.reset();
-  }, [newDepositFetcher.type]);
+  }, [newDepositFetcher.type, errors]);
 
   return (
     <div>

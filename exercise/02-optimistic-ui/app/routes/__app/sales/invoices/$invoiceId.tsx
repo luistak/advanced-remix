@@ -16,6 +16,7 @@ import { currencyFormatter, parseDate } from "~/utils";
 import type { Deposit } from "~/models/deposit.server";
 import { createDeposit } from "~/models/deposit.server";
 import invariant from "tiny-invariant";
+import { useEffect, useRef } from "react";
 
 type LoaderData = {
   customerName: string;
@@ -172,26 +173,49 @@ export default function InvoiceRoute() {
     </div>
   );
 }
+type ArrayElement<ArrayType extends readonly unknown[]> = 
+  ArrayType extends readonly (infer ElementType)[] ? ElementType : never;
 
 function Deposits() {
   const data = useLoaderData() as LoaderData;
   const newDepositFetcher = useFetcher();
   // 💿 create a ref for the form (so we can reset it once the submission is finished)
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // const deposits useState();
+
+  const deposits = [...data.deposits]
 
   // 💿 create a deposits array that includes the user's submission
   // 💰 you can get the user's submission via newDepositFetcher.submission
   // 💰 you can convert the depositDate to a Date object via parseDate and then use toLocaleDateString()
+  if (newDepositFetcher.submission) {
+    const { formData } = newDepositFetcher.submission;
+    const newDeposit: ArrayElement<LoaderData['deposits']> = {
+      id: Math.random(),
+      amount: Number(formData.get('amount') ?? 0),
+      depositDateFormatted: parseDate(String(formData.get('depositDate'))).toLocaleDateString()
+    }
+
+    deposits.push(newDeposit);
+  }
 
   // 💿 add a useEffect that resets the form when the submission is finished
   // 💰 (newDepositFetcher.type === "done")
+  useEffect(() => {
+    if (newDepositFetcher.type === 'done') {
+      formRef.current?.reset();
+    }
+
+  }, [newDepositFetcher.type])
 
   return (
     <div>
       <div className="font-bold leading-8">Deposits</div>
       {/* 💿 swap this for your optimistic deposits array */}
-      {data.deposits.length > 0 ? (
+      {deposits.length > 0 ? (
         // 💿 swap this for your optimistic deposits array
-        data.deposits.map((deposit) => (
+        deposits.map((deposit) => (
           <div key={deposit.id} className={lineItemClassName}>
             <Link
               to={`../../deposits/${deposit.id}`}
@@ -206,6 +230,7 @@ function Deposits() {
         <div>None yet</div>
       )}
       <newDepositFetcher.Form
+        ref={formRef}
         method="post"
         className="grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-2"
         // 💿 add your form ref here

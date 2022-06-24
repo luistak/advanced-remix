@@ -1,27 +1,38 @@
-import type { LoaderFunction } from "@remix-run/node";
+import { json, LoaderFunction } from "@remix-run/node";
+import { useFetcher } from "@remix-run/react";
 import clsx from "clsx";
 import { useCombobox } from "downshift";
 import { useId, useState } from "react";
 import { LabelText } from "~/components";
+import { searchCustomers } from "~/models/customer.server";
+import { requireUser } from "~/session.server";
 
-export const loader: LoaderFunction = async () => {
+export const loader: LoaderFunction = async ({ request, params }) => {
   // 💿 verify the user is logged in with requireUser
+  await requireUser(request);
 
   // 💿 perform the customer search with searchCustomers and the query from the request
   // and send back a json response
+  const url = new URL(request.url);
+  const query = url.searchParams.get("query");
 
-  // 💣 and... delete this
-  throw new Error("Not implemented");
+  const customers = await searchCustomers(query ?? '')
+
+  return json(customers);
 };
 
 type Customer = { id: string; name: string; email: string };
 
 export function CustomerCombobox({ error }: { error?: string | null }) {
   // 💿 use the useFetcher hook to fetch the customers
+  const fetcher = useFetcher()
+
+  // 💯 the combobox needs to have a unique but consistent ID, so swap this for useId from React
   const id = useId();
 
   // 💿 set this to the customer data you get from the fetcher (if it exists)
-  const customers: Array<Customer> = [];
+  const customers: Array<Customer> = fetcher.data ?? [];
+
   const [selectedCustomer, setSelectedCustomer] = useState<
     Customer | null | undefined
   >(null);
@@ -34,6 +45,12 @@ export function CustomerCombobox({ error }: { error?: string | null }) {
     items: customers,
     itemToString: (item) => (item ? item.name : ""),
     onInputValueChange: (changes) => {
+      if (!changes.inputValue) return;
+
+      fetcher.submit(
+        { query: changes.inputValue },
+        { method: "get", action: "/resources/customers" }
+      );
       // 💿 use your fetcher to submit the query and get back the customers
       // 💰 changes.inputValue is the query
       // 💰 what method do we need to set this to so it ends up in the loader?

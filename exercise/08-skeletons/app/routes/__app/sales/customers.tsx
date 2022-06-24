@@ -1,12 +1,15 @@
-import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
+import { NavLink, Outlet, useLoaderData, useTransition } from "@remix-run/react";
 import type { LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { FilePlusIcon } from "~/components";
 import { requireUser } from "~/session.server";
 import { getCustomerListItems } from "~/models/customer.server";
+import { useSpinDelay } from "spin-delay";
 
+
+type Customer = { id: string, name: string, email: string};
 type LoaderData = {
-  customers: Awaited<ReturnType<typeof getCustomerListItems>>;
+  customers: Customer[];
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -21,9 +24,13 @@ export default function Customers() {
 
   // 💿 get the transition from useTransition
   // 💰 use transition.location?.state to get the customer we're transitioning to
+  const transition = useTransition();
+
+  const customer = (transition.location?.state as { customer?: Customer })?.customer;
 
   // 💯 to avoid a flash of loading state, you can use useSpinDelay
   // from spin-delay to determine whether to show the skeleton
+  const isLoadingCustomer  = useSpinDelay(Boolean(customer)) && customer;
 
   return (
     <div className="flex overflow-hidden rounded-lg border border-gray-100">
@@ -47,7 +54,7 @@ export default function Customers() {
               key={customer.id}
               to={customer.id}
               // 💿 add state to set the customer for the transition
-              // 💰 state={{ customer }}
+              state={{ customer }}
               prefetch="intent"
               className={({ isActive }) =>
                 "block border-b border-gray-50 py-3 px-4 hover:bg-gray-50" +
@@ -66,12 +73,7 @@ export default function Customers() {
         </div>
       </div>
       <div className="flex w-1/2 flex-col justify-between">
-        {/*
-          💿 if we're loading a customer, then render the
-          <CustomerSkeleton /> (defined below) instead of
-          the <Outlet />
-        */}
-        <Outlet />
+        {isLoadingCustomer ?  <CustomerSkeleton name={customer.name} email={customer.email} /> : <Outlet />}
         <small className="p-2 text-center">
           Note: this is arbitrarily slow to demonstrate pending UI.
         </small>

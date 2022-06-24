@@ -11,6 +11,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  ShouldReloadFunction,
   useFetcher,
   useLoaderData,
   useLocation,
@@ -43,6 +44,24 @@ export const loader: LoaderFunction = async ({ request }) => {
   return json<LoaderData>({
     user: await getUser(request),
   });
+};
+
+// 💿 Add unstable_shouldReload here and only reload the data if the transition
+// has a submission where the action is "/login" or "/logout"
+export const unstable_shouldReload: ShouldReloadFunction = ({
+  // same params that go to `loader` and `action`
+  params,
+
+  // a possible form submission that caused this to be reloaded
+  submission,
+
+  // the next URL being used to render this page
+  url,
+
+  // the previous URL used to render this page
+  prevUrl,
+}) => {
+  return Boolean(submission?.action.includes("/login") || submission?.action.includes("/logout"));
 };
 
 export default function App() {
@@ -126,6 +145,3 @@ function LogoutTimer() {
     </Dialog>
   );
 }
-
-// 💿 Add unstable_shouldReload here and only reload the data if the transition
-// has a submission where the action is "/login" or "/logout"

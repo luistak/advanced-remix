@@ -1,7 +1,7 @@
-import type { LoaderFunction } from "@remix-run/node";
+import { Deferrable, deferred, LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useCatch, useLoaderData, useParams } from "@remix-run/react";
-import { ErrorFallback } from "~/components";
+import { Deferred, Link, useCatch, useLoaderData, useParams } from "@remix-run/react";
+import { ErrorFallback, InvoiceDetailsFallback } from "~/components";
 import { getCustomerDetails } from "~/models/customer.server";
 import { requireUser } from "~/session.server";
 import { currencyFormatter } from "~/utils";
@@ -12,9 +12,9 @@ type LoaderData = {
     email: string;
   };
   // 💿 wrap this in the Deferrable generic (from @remix-run/node) to this:
-  invoiceDetails: NonNullable<
+  invoiceDetails: Deferrable<NonNullable<
     Awaited<ReturnType<typeof getCustomerDetails>>
-  >["invoiceDetails"];
+  >["invoiceDetails"]>;
 };
 
 async function getCustomerInfo(customerId: string) {
@@ -39,19 +39,22 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   }
   // 💿 The invoiceDetails are slow, so let's defer that.
   // 💿 Change this from a Promise.all to two separate calls
+  const customerInfo = await getCustomerInfo(customerId);
+
+  const invoiceDetailsPromise = getCustomerInvoiceDetails(customerId);
   // 💿 Await the customer info, and not the invoice details.
-  const [customerInfo, invoiceDetails] = await Promise.all([
-    getCustomerInfo(customerId),
-    getCustomerInvoiceDetails(customerId),
-  ]);
+  // const [customerInfo, invoiceDetails] = await Promise.all([
+  //   getCustomerInfo(customerId),
+  //   getCustomerInvoiceDetails(customerId),
+  // ]);
   if (!customerInfo) {
     throw new Response("not found", { status: 404 });
   }
   // 💿 change this from json to deferred (from @remix-run/node)
-  return json<LoaderData>({
+  return deferred<LoaderData>({
     customerInfo,
-    invoiceDetails,
-  });
+    invoiceDetails: invoiceDetailsPromise,
+  },);
 };
 
 const lineItemClassName = "border-t border-gray-100 text-[14px] h-[56px]";
@@ -75,38 +78,42 @@ export default function CustomerRoute() {
         - value as data.invoiceDetails
         - fallback as <InvoiceDetailsFallback /> (imported from "~/components")
       */}
-      <table className="w-full">
-        <tbody>
-          {data.invoiceDetails.map((details) => (
-            <tr key={details.id} className={lineItemClassName}>
-              <td>
-                <Link
-                  className="text-blue-600 underline"
-                  to={`../../invoices/${details.id}`}
+      <Deferred value={data.invoiceDetails} fallback={<InvoiceDetailsFallback />}>
+        {(invoiceDetails) => (
+          <table className="w-full">
+          <tbody>
+            {invoiceDetails.map((details) => (
+              <tr key={details.id} className={lineItemClassName}>
+                <td>
+                  <Link
+                    className="text-blue-600 underline"
+                    to={`../../invoices/${details.id}`}
+                  >
+                    {details.number}
+                  </Link>
+                </td>
+                <td
+                  className={
+                    "text-center uppercase" +
+                    " " +
+                    (details.dueStatus === "paid"
+                      ? "text-green-brand"
+                      : details.dueStatus === "overdue"
+                      ? "text-red-brand"
+                      : "")
+                  }
                 >
-                  {details.number}
-                </Link>
-              </td>
-              <td
-                className={
-                  "text-center uppercase" +
-                  " " +
-                  (details.dueStatus === "paid"
-                    ? "text-green-brand"
-                    : details.dueStatus === "overdue"
-                    ? "text-red-brand"
-                    : "")
-                }
-              >
-                {details.dueStatusDisplay}
-              </td>
-              <td className="text-right">
-                {currencyFormatter.format(details.totalAmount)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  {details.dueStatusDisplay}
+                </td>
+                <td className="text-right">
+                  {currencyFormatter.format(details.totalAmount)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        )}
+      </Deferred>
     </div>
   );
 }

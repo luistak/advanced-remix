@@ -3,6 +3,8 @@ import { json } from "@remix-run/node";
 import {
   Link,
   useCatch,
+  useFetcher,
+  useFetchers,
   useLoaderData,
   useLocation,
   useParams,
@@ -175,6 +177,7 @@ export default function InvoiceRoute() {
 function Deposits() {
   const data = useLoaderData() as LoaderData;
   // 💿 call useFetcher here to get the fetcher for the form
+  const { Form } = useFetcher();
 
   return (
     <div>
@@ -195,7 +198,7 @@ function Deposits() {
         <div>None yet</div>
       )}
       {/* 💿 change this to your fetcher.Form */}
-      <form
+      <Form
         method="post"
         className="grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-2"
       >
@@ -252,7 +255,7 @@ function Deposits() {
             </button>
           </div>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

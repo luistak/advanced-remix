@@ -1,4 +1,5 @@
-import { Form, Link, NavLink, Outlet } from "@remix-run/react";
+import { Form, Link, NavLink, Outlet, useFetchers, useTransition } from "@remix-run/react";
+import { useSpinDelay } from 'spin-delay';
 import clsx from "clsx";
 import {
   FullFakebooksLogo,
@@ -8,6 +9,13 @@ import {
 } from "~/components";
 
 export default function AppRoute() {
+  const transition = useTransition();
+
+  const loading = Boolean(transition.state !== 'idle');
+
+  // options are optional, and default to these values
+  const showSpinner = useSpinDelay(loading, { delay: 500, minDuration: 200 });
+
   return (
     <div className="relative flex h-full rounded-lg bg-white text-gray-600">
       <div className="border-r border-gray-100 bg-gray-50">
@@ -16,6 +24,7 @@ export default function AppRoute() {
             <Link to=".">
               <FullFakebooksLogo size="sm" position="left" />
             </Link>
+            <Spinner visible={showSpinner} />
           </div>
           <div className="h-7" />
           <div className="flex flex-col font-bold text-gray-800">
